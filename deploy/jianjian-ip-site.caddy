@@ -1,0 +1,13 @@
+# 203.0.113.10 is a documentation example. Replace it with your own server IP.
+# Register as the "jianjian" site fragment in the existing shared Caddy manager.
+https://203.0.113.10:8443 {
+	tls {
+		issuer acme {
+			profile shortlived
+			disable_tlsalpn_challenge
+		}
+	}
+	reverse_proxy 127.0.0.1:8787 {
+		flush_interval -1
+	}
+}

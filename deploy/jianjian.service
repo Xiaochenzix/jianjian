@@ -1,0 +1,26 @@
+[Unit]
+Description=Jianjian private device sync
+After=network.target
+
+[Service]
+Type=simple
+User=jianjian
+Group=jianjian
+WorkingDirectory=/opt/jianjian
+ExecStart=/usr/bin/node /opt/jianjian/server/index.mjs
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=DATA_DIR=/var/lib/jianjian
+StateDirectory=jianjian
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/jianjian
+
+[Install]
+WantedBy=multi-user.target

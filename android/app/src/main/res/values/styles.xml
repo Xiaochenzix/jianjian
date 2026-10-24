@@ -1,0 +1,13 @@
+<resources>
+    <style name="Theme.Jianjian" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#ededed</item>
+        <item name="android:colorAccent">#07c160</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:statusBarColor">#ededed</item>
+        <item name="android:navigationBarColor">#ededed</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+</resources>

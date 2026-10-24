@@ -1,0 +1,12 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'app.jianjian.mobile'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'app.jianjian.mobile'; minSdk 29; targetSdk 35; versionCode 4; versionName '0.4.0'
+        testInstrumentationRunner 'app.jianjian.mobile.LaunchSmokeInstrumentation'
+    }
+    sourceSets { main { assets.srcDirs = ['../../web'] } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    buildTypes { release { minifyEnabled false } }
+}

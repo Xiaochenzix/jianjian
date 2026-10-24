@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#183c2f">
+  <title>剪剪 · 让灵感流动 | 品牌 MV</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/player.css">
+  <script src="/film.js" defer></script>
+  <script src="/player.js" defer></script>
+</head>
+<body>
+  <main>
+    <header><a href="/" class="brand" aria-label="剪剪品牌短片首页"><img src="/icon.svg" alt="" width="36" height="36"><span>剪剪</span><small>JIANJIAN</small></a><span class="edition">A MOTION FILM <i></i> 2026</span></header>
+    <section class="intro" aria-labelledby="title"><div><p class="eyebrow">COPY A MOMENT. KEEP IT MOVING.</p><h1 id="title">让灵感流动<span>。</span></h1></div><p class="description">在自己的设备之间，接着刚才的灵感。<br>一支关于连接的原创音乐短片。</p></section>
+    <section class="player" aria-label="剪剪品牌音乐短片播放器">
+      <div class="stage" id="stage">
+        <canvas id="film" width="1920" height="1080" role="img" aria-label="剪剪动画：文字、文件和消息在自己的设备之间流动"></canvas>
+        <button id="start" class="start" aria-label="播放 MV，含音乐"><span class="play-symbol">▶</span><span>播放短片<small>48 秒 · 原创配乐</small></span></button>
+      </div>
+      <div class="controls">
+        <button id="play" class="control play-control" aria-label="播放">▶<span>播放</span></button>
+        <output id="time" for="seek">00:00 / 00:48</output>
+        <input id="seek" type="range" min="0" max="48" step="0.01" value="0" aria-label="播放进度" aria-valuetext="0 秒，共 48 秒">
+        <button id="mute" class="control" aria-label="静音" aria-pressed="false">音乐 开</button>
+        <button id="full" class="control full" aria-label="全屏">⛶</button>
+      </div>
+      <audio id="score" preload="auto" src="/score.wav"></audio>
+      <p id="status" class="status" role="status" aria-live="polite">点击播放，开启声音。</p>
+    </section>
+    <nav class="chapters" aria-label="短片章节">
+      <button data-time="0" aria-current="true"><small>01 <span>00:00</span></small><strong>灵感，不必重来</strong></button>
+      <button data-time="8"><small>02 <span>00:08</span></small><strong>让想法接着走</strong></button>
+      <button data-time="16"><small>03 <span>00:16</span></small><strong>文件，顺手就到</strong></button>
+      <button data-time="24"><small>04 <span>00:24</span></small><strong>设备不同，节奏相同</strong></button>
+      <button data-time="32"><small>05 <span>00:32</span></small><strong>自己的空间</strong></button>
+      <button data-time="40"><small>06 <span>00:40</span></small><strong>让灵感流动</strong></button>
+    </nav>
+    <footer><p><span class="dot"></span> 48 SEC <b>/</b> 120 BPM <b>/</b> ORIGINAL SCORE</p><a id="download" href="/download/jianjian-mv.mp4" download="jianjian-mv.mp4">下载 MP4 <span>↗</span></a></footer>
+  </main>
+</body>
+</html>

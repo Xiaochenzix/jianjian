@@ -1,0 +1,8 @@
+node_modules
+data
+test-results
+releases
+android
+.git
+.tools
+.ssh_known_hosts

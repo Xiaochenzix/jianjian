@@ -1,0 +1,26 @@
+{
+  "name": "jianjian", "version": "0.4.1", "private": true, "type": "module",
+  "description": "剪剪 — 自己设备之间的消息、文件与剪贴板同步",
+  "author": { "name": "Jianjian" },
+  "engines": { "node": ">=24.0.0" },
+  "scripts": {
+    "start": "node server/index.mjs", "admin": "node server/admin.mjs",
+    "test": "node --test tests/*.test.mjs", "desktop": "electron desktop/main.cjs",
+    "build:windows": "electron-builder --win nsis portable", "build:mac": "electron-builder --mac dmg",
+    "build:linux": "electron-builder --linux AppImage",
+    "mv": "node scripts/preview-mv.mjs",
+    "mv:audio": "node scripts/mv-audio.mjs releases/jianjian-mv.wav",
+    "mv:render": "node scripts/render-mv.mjs"
+  },
+  "main": "desktop/main.cjs",
+  "devDependencies": { "electron": "43.3.0", "electron-builder": "26.15.3" },
+  "build": {
+    "appId": "app.jianjian.desktop", "productName": "剪剪", "icon": "desktop/icon.png",
+    "directories": { "output": "releases" },
+    "files": ["desktop/**", "web/**", "package.json"],
+    "win": { "target": ["nsis", "portable"], "artifactName": "Jianjian-${version}-Windows.${ext}" },
+    "nsis": { "artifactName": "Jianjian-${version}-Setup.${ext}", "oneClick": false, "allowToChangeInstallationDirectory": true },
+    "mac": { "category": "public.app-category.productivity", "target": "dmg" },
+    "linux": { "category": "Utility", "maintainer": "Jianjian", "target": ["AppImage"] }
+  }
+}
