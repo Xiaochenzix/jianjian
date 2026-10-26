@@ -13,6 +13,10 @@ const bridge = window.jianjian || (window.AndroidBridge ? {
   }),
   onEvent: cb => { nativeListener = cb; }
 } : null);
+// 只有桌面端能把文件拖出窗口保存到桌面/文件夹
+const canDragFiles = () => !!(bridge && typeof bridge.dragFile === 'function');
+let fileDragRequest = null, filePointerDown = '';
+window.addEventListener('pointerup', () => { filePointerDown = ''; }, true);
 const defaults = { autoSend: false, autoWrite: false, autoStart: false, background: false };
 let state = { session: null, prefs: { ...defaults }, info: { platform: 'Web', name: '网页设备', clipboard: false, background: false }, items: [], devices: [], filter: '', q: '', nextBefore: null, connected: false };
 let eventAbort, reconnectTimer, toastTimer, searchTimer, refreshGeneration = 0, uploadBusy = false, destroyed = false;
@@ -279,12 +283,25 @@ function renderTimeline(options = {}) {
     const footer = element('div', 'card-footer');
     if (item.kind === 'file') {
       const expired = item.expired || item.expires_at <= Date.now();
+      const draggable = canDragFiles() && !expired;
       const row = element('div', 'file-body');
       const extension = item.filename.includes('.') ? item.filename.split('.').at(-1).slice(0, 4).toUpperCase() : 'FILE';
       row.append(element('div', 'file-symbol', extension));
       const desc = element('div'); desc.append(element('strong', '', item.filename));
       const size = item.size >= 1048576 ? `${(item.size / 1048576).toFixed(1)} MB` : `${(item.size / 1024).toFixed(1)} KB`;
-      desc.append(element('small', expired ? 'expired-label' : '', `${size} · ${expired ? '已过期，文件已不可下载' : `${new Date(item.expires_at).toLocaleDateString('zh-CN')} 到期`}`)); row.append(desc); bubble.append(row);
+      const hint = draggable ? ' · 可拖到桌面保存' : '';
+      desc.append(element('small', expired ? 'expired-label' : '', `${size} · ${expired ? '已过期，文件已不可下载' : `${new Date(item.expires_at).toLocaleDateString('zh-CN')} 到期`}${hint}`)); row.append(desc); bubble.append(row);
+      if (draggable) {
+        const payload = { id: item.id, filename: item.filename };
+        row.draggable = true; row.title = '按住拖到桌面或文件夹，直接保存到那里';
+        row.addEventListener('pointerdown', event => { if (event.button === 0) filePointerDown = item.id; });
+        row.addEventListener('dragstart', event => {
+          event.preventDefault(); // 页面内不开 HTML5 拖放，交给桌面端发起系统拖拽
+          fileDragRequest = payload;
+          setTimeout(() => { if (fileDragRequest === payload) fileDragRequest = null; }, 60000);
+          try { bridge.dragFile(payload); } catch (error) { toast(error.message); }
+        });
+      }
       const download = element('button', '', expired ? '已过期' : '↓ 下载文件'); download.disabled = !!expired;
       download.onclick = () => downloadFile(item, download); footer.append(download);
     } else {
@@ -522,6 +539,19 @@ async function handleEvent(event) {
     return;
   }
   if (!state.session || destroyed) return;
+  if (event.type === 'dragCache') {
+    const data = event.data || {};
+    if (!fileDragRequest || fileDragRequest.id !== data.id) return;
+    if (data.state === 'preparing') { toast('正在准备文件，稍等片刻…'); return; }
+    if (data.state === 'ready') {
+      // 鼠标还按着就直接开始拖；已经松手就提示再拖一次（此时本机已有副本）
+      if (filePointerDown === data.id && typeof bridge.dragFile === 'function') bridge.dragFile(fileDragRequest);
+      else { fileDragRequest = null; toast('文件已准备好，再拖一次就能保存到任意位置'); }
+      return;
+    }
+    if (data.state === 'failed') { fileDragRequest = null; toast(`文件准备失败：${data.message}`); }
+    return;
+  }
   if (event.type === 'status') { setConnected(event.connected, event.detail); return; }
   if (event.type === 'error') { toast(event.message); return; }
   if (event.type === 'auth') { await logout(false); toast('登录已失效，请重新登录'); return; }

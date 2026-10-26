@@ -57,7 +57,7 @@ async function host(t, fetchImpl = async () => ({ ok: true, status: 200, json: a
     Tray: class extends EventEmitter { setToolTip() {} setContextMenu(items) { menu = items; } },
     Menu: { buildFromTemplate: x => x }, nativeImage: { createFromPath: () => ({ resize: () => ({}) }) },
     safeStorage: { isEncryptionAvailable: () => !!options.persistedUser, encryptString: value => Buffer.from(value), decryptString: value => value.toString('utf8') }, dialog: { showSaveDialog: options.showSaveDialog }, session: { defaultSession: { setPermissionRequestHandler() {} } } };
-  vm.runInNewContext(source, { require(name) { if (name === 'electron') return electron; if (name === './sync-engine.cjs') return { SyncEngine: options.realEngine ? RealEngine : Engine }; if (name === './downloads.cjs') return require('../desktop/downloads.cjs'); if (name === './mcp.cjs') return require('../desktop/mcp.cjs'); if (name === './floating-window.cjs') return require('../desktop/floating-window.cjs'); return require(name); },
+  vm.runInNewContext(source, { require(name) { if (name === 'electron') return electron; if (name === './sync-engine.cjs') return { SyncEngine: options.realEngine ? RealEngine : Engine }; if (name === './downloads.cjs') return require('../desktop/downloads.cjs'); if (name === './drag-cache.cjs') return require('../desktop/drag-cache.cjs'); if (name === './mcp.cjs') return require('../desktop/mcp.cjs'); if (name === './floating-window.cjs') return require('../desktop/floating-window.cjs'); return require(name); },
     __dirname: resolve('desktop'), process: { platform: 'win32', env: {}, argv: [] }, console, Buffer,
     URL, fetch: fetchImpl, setTimeout, clearTimeout, AbortController, AbortSignal });
   await Promise.resolve();

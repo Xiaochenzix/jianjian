@@ -7,6 +7,7 @@ const { pathToFileURL } = require('node:url');
 const { SyncEngine } = require('./sync-engine.cjs');
 const { createFloatingController } = require('./floating-window.cjs');
 const { createDownloads } = require('./downloads.cjs');
+const { createDragCache, FILE_ID } = require('./drag-cache.cjs');
 const { createMcp } = require('./mcp.cjs');
 app.setName('剪剪');
 const locked = app.requestSingleInstanceLock();
@@ -26,6 +27,8 @@ const emit = value => {
 };
 const engine = new SyncEngine({ clipboard, emit, getPrefs: () => prefs });
 const downloads = createDownloads({ emit });
+let dragCache = null;
+const getDragCache = () => dragCache || (dragCache = createDragCache({ root: join(app.getPath('userData'), 'drag-cache') }));
 const mcp = createMcp({ getSession: () => current, emit });
 function key(s = current) { return `${s.server}:${s.username}`; }
 function vaultPath() { return join(app.getPath('userData'), 'session.enc'); }
@@ -91,6 +94,7 @@ async function floatingApi(path, options = {}) {
     throw error;
   } finally { clearTimeout(timer); floatingRequests.delete(controller); }
 }
+function fromMain(event) { return !!(window && !window.isDestroyed() && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame && event.senderFrame?.url === page); }
 function createWindow() {
   window = new BrowserWindow({ width: 1200, height: 850, minWidth: 760, minHeight: 580, title: '剪剪', backgroundColor: '#f6f8f5', icon: join(__dirname, 'icon.png'), autoHideMenuBar: true,
     webPreferences: { preload: join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false, spellcheck: false } });
@@ -119,7 +123,7 @@ app.whenReady().then(() => {
   tray = new Tray(icon.resize({ width: 20, height: 20 })); tray.setToolTip('剪剪 · 设备同步'); tray.on('click', show);
   updateTray();
   ipcMain.handle('jianjian', async (event, method, value) => {
-    const mainSender = window && !window.isDestroyed() && event.sender === window.webContents && event.senderFrame === window.webContents.mainFrame && event.senderFrame?.url === page;
+    const mainSender = fromMain(event);
     const floatWindow = floating?.window;
     const floatSender = floatWindow && !floatWindow.isDestroyed() && event.sender === floatWindow.webContents && event.senderFrame === floatWindow.webContents.mainFrame && event.senderFrame?.url === floating.page;
     const mainMethods = new Set(['getState', 'saveSession', 'connect', 'prefs', 'copy', 'readClipboard', 'download', 'listDownloads', 'cancelDownload', 'logout', 'showFloating']);
@@ -185,6 +189,20 @@ app.whenReady().then(() => {
       default: throw new Error('不支持的操作');
     }
   });
+  // 把消息里的文件拖到桌面或资源管理器文件夹：先确保本机有副本，再交给系统拖拽
+  ipcMain.on('jianjian:drag-file', (event, value) => {
+    if (!fromMain(event) || !current || !FILE_ID.test(String(value?.id)) || event.sender.isDestroyed()) return;
+    const requestSession = current, generation = sessionGeneration, fileId = value.id, sender = event.sender;
+    const cached = getDragCache().existing(requestSession, fileId, value.filename);
+    if (cached) { sender.startDrag({ file: cached, icon: icon.resize({ width: 32, height: 32 }) }); return; }
+    // startDrag 只认本地路径，文件在服务器上时要先取回来，让用户再拖一次
+    const notify = data => { if (generation === sessionGeneration && requestSession === current && !sender.isDestroyed()) emit({ type: 'dragCache', data: { id: fileId, ...data } }); };
+    notify({ state: 'preparing' });
+    getDragCache().prepare(requestSession, fileId, value.filename)
+      .then(() => notify({ state: 'ready' }))
+      .catch(error => notify({ state: 'failed', message: error.message }));
+  });
+  getDragCache().prune().catch(() => {});
   // Reconnect independently of the main renderer's initial /me request.
   if (current) engine.start(current);
   if (current && floating?.enabled) floating.show();

@@ -113,6 +113,8 @@ h1, h2, h3, p { margin: 0; }
 .card-footer button:hover { background: #e0e5dd; color: #396b43; }
 .card-footer .delete-button { color: #969f97; }
 .file-body { display: flex; gap: 14px; align-items: center; width: 250px; max-width: 100%; padding: 4px 0; }
+.file-body[draggable="true"] { cursor: grab; }
+.file-body[draggable="true"]:active { cursor: grabbing; }
 .file-body>div:last-child { min-width: 0; }
 .file-symbol { display: grid; place-items: center; width: 44px; min-width: 44px; height: 50px; border-radius: 6px; font-size: 10px; font-weight: 600; background: #f0b84f; color: white; }
 .file-body strong { display: block; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; line-height: 1.5; }
