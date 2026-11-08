@@ -75,6 +75,8 @@ function harness({ native = null } = {}) {
     globalThis.probe = {
       get downloadTasks() { return downloadTasks; }, downloadFile, get attachments() { return attachments; }, addAttachments, compose, get state() { return state; }, refresh, applyLiveEvent, confirmAction, handleEvent, resizeMessageInput, renderSettings, enter,
       useTimeline() { renderTimeline = realRenderTimeline; },
+      classify: text => messageView(text),
+      paint() { renderTimeline(); },
       set ready(value) { appReady = value; },
       back: () => window.__handleNativeBack(),
       setApi(fn) { api = fn; },
@@ -318,6 +320,36 @@ test('changing filters cancels an in-flight floating-window file lookup', async 
   assert.equal(app.state.items[0].seq, 201);
 });
 
+
+function classNames(node, list = []) {
+  if (typeof node.className === 'string' && node.className) list.push(node.className);
+  for (const child of node.children || []) classNames(child, list);
+  return list;
+}
+test('timeline renders links and commands, and pinning follows the pinned tab', async () => {
+  const app = harness(); app.probe.useTimeline();
+  assert.equal(app.probe.classify('https://github.com/jianjian/app').type, 'link');
+  assert.equal(app.probe.classify('npm install jianjian').type, 'code');
+  assert.equal(app.probe.classify('com.jianjian.app').type, 'code');
+  assert.equal(app.probe.classify('今晚把这段话同步过去').type, 'text');
+  app.state.items = [
+    { ...message(1), text: 'https://github.com/jianjian/app' },
+    { ...message(2, 'clipboard'), text: 'npm install jianjian' },
+    { ...message(3), text: '普通消息', pinned: 1 }
+  ];
+  app.probe.paint();
+  const names = classNames(app.elements.get('timeline'));
+  assert.ok(names.includes('link-card'));
+  assert.ok(names.includes('message-code'));
+  assert.equal(names.includes('card-footer'), false);
+  app.state.items = []; app.state.filter = 'pinned';
+  app.applyLiveEvent({ type: 'message', data: { ...message(5), text: '留在上面', pinned: 1 } });
+  app.applyLiveEvent({ type: 'message', data: message(6) });
+  assert.equal(app.state.items.length, 1);
+  assert.equal(app.state.items[0].seq, 5);
+  app.applyLiveEvent({ type: 'changed', data: { id: 'message-5', pinned: false } });
+  assert.equal(app.state.items.length, 0);
+});
 
 test('pasting images stages removable attachments without sending; text paste remains native', () => {
   const app = harness(); app.state.session.config = { maxFileMB: 500 };

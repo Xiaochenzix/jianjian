@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createApp } from '../server/index.mjs';
-import { createUser } from '../server/store.mjs';
+import { createUser, openStore } from '../server/store.mjs';
 
 async function fixture(t, options = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'jianjian-test-'));
@@ -94,6 +94,41 @@ test('SSE delivers same-account messages and deletion events', async t => {
   await f.req(`/messages/${message.id}`, { token: f.owner.token, method: 'DELETE' });
   assert.match(new TextDecoder().decode((await reader.read()).value), /event: deleted/);
   controller.abort();
+});
+test('pin stays on the account and the pinned tab hides everything else', async t => {
+  const f = await fixture(t);
+  const item = await (await f.send(f.owner, 'keep this')).json();
+  assert.equal(item.pinned, 0);
+  assert.equal((await f.req(`/messages/${item.id}`, { token: f.other.token, method: 'PATCH', body: { pinned: true } })).status, 404);
+  assert.equal((await f.req(`/messages/${item.id}`, { token: f.owner.token, method: 'PATCH', body: { pinned: 'yes' } })).status, 400);
+  const pinned = await (await f.req(`/messages/${item.id}`, { token: f.owner.token, method: 'PATCH', body: { pinned: true } })).json();
+  assert.equal(pinned.id, item.id); assert.equal(pinned.pinned, true);
+  assert.equal((await (await f.req('/messages?kind=pinned', { token: f.owner.token })).json()).items.length, 1);
+  assert.equal((await f.req(`/messages/${item.id}`, { token: f.owner.token, method: 'PATCH', body: { pinned: false } })).status, 200);
+  assert.equal((await (await f.req('/messages?kind=pinned', { token: f.owner.token })).json()).items.length, 0);
+  assert.equal((await (await f.req('/messages?kind=text', { token: f.owner.token })).json()).items.length, 1);
+});
+test('an older message table receives the pinned column', async () => {
+  const { DatabaseSync } = await import('node:sqlite');
+  const dir = await mkdtemp(join(tmpdir(), 'jianjian-pin-'));
+  const created = new DatabaseSync(join(dir, 'jianjian.sqlite'));
+  created.exec(`CREATE TABLE messages (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT, id TEXT NOT NULL UNIQUE,
+    user_id TEXT NOT NULL, device_id TEXT NOT NULL, kind TEXT NOT NULL,
+    text TEXT, filename TEXT, size INTEGER, created_at INTEGER NOT NULL,
+    expires_at INTEGER, expired INTEGER NOT NULL DEFAULT 0, client_id TEXT NOT NULL
+  )`);
+  created.close();
+  const store = openStore(dir);
+  try {
+    assert.ok(store.prepare('PRAGMA table_info(messages)').all().some(column => column.name === 'pinned'));
+  } finally {
+    store.close();
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try { await rm(dir, { recursive: true, force: true }); break; }
+      catch (error) { if (error.code !== 'EBUSY' || attempt === 4) throw error; await new Promise(resolve => setTimeout(resolve, 40)); }
+    }
+  }
 });
 test('logout revokes token; logging in again on same device revokes previous token', async t => {
   const f = await fixture(t); const key = randomUUID(); const first = await f.login('owner', key); const second = await f.login('owner', key);

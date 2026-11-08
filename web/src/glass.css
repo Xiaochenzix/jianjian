@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@source "./glass-login.jsx";
+
+@theme {
+  --animate-glass-shake: glass-shake .42s ease;
+}
+
+@keyframes glass-shake {
+  0%, 100% { transform: translateX(0); }
+  18% { transform: translateX(-7px); }
+  36% { transform: translateX(6px); }
+  54% { transform: translateX(-4px); }
+  72% { transform: translateX(2px); }
+}
+
+.glass-root { min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-glass-shake { animation: none; }
+}

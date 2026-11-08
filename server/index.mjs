@@ -115,7 +115,7 @@ export function createApp({ dataDir = resolve(process.env.DATA_DIR || join(root,
         return json(res, 200, { token, deviceId, username: user.username, role: user.role, config: config(db) });
       }
       if (!path.startsWith('/api/')) {
-        const allowed = { '/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css', '/icon.svg': 'icon.svg' };
+        const allowed = { '/': 'index.html', '/index.html': 'index.html', '/app.js': 'app.js', '/styles.css': 'styles.css', '/icon.svg': 'icon.svg', '/theme.js': 'theme.js', '/qr.js': 'qr.js', '/glass-login.js': 'glass-login.js', '/glass-login.css': 'glass-login.css', '/beam-login.js': 'beam-login.js', '/beam-login.css': 'beam-login.css' };
         const file = allowed[path];
         if (!file || req.method !== 'GET') fail(404, '页面不存在');
         res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
@@ -155,11 +155,13 @@ export function createApp({ dataDir = resolve(process.env.DATA_DIR || join(root,
       if (path === '/api/messages' && req.method === 'GET') {
         const before = Number(url.searchParams.get('before')) || Number.MAX_SAFE_INTEGER;
         const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || 50, 1), 100);
-        const kind = ['text', 'clipboard', 'file'].includes(url.searchParams.get('kind')) ? url.searchParams.get('kind') : '';
+        const requested = String(url.searchParams.get('kind') || '');
+        const pinnedOnly = requested === 'pinned' ? 1 : 0;
+        const kind = ['text', 'clipboard', 'file'].includes(requested) ? requested : '';
         const q = String(url.searchParams.get('q') || '').slice(0, 200).replace(/[\\%_]/g, c => `\\${c}`);
-        const rows = db.prepare(`${messageSelect} WHERE m.user_id=? AND m.seq<? AND (?='' OR m.kind=?)
+        const rows = db.prepare(`${messageSelect} WHERE m.user_id=? AND m.seq<? AND (?='' OR m.kind=?) AND (?=0 OR m.pinned=1)
           AND (?='' OR COALESCE(m.text,m.filename) LIKE ? ESCAPE '\\') ORDER BY m.seq DESC LIMIT ?`)
-          .all(s.user_id, before, kind, kind, q, `%${q}%`, limit);
+          .all(s.user_id, before, kind, kind, pinnedOnly, q, `%${q}%`, limit);
         return json(res, 200, { items: rows.map(publicMessage), nextBefore: rows.length === limit ? rows.at(-1).seq : null });
       }
       if (path === '/api/messages' && req.method === 'POST') {
@@ -234,6 +236,17 @@ export function createApp({ dataDir = resolve(process.env.DATA_DIR || join(root,
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': item.size,
           'Content-Disposition': `attachment; filename="download"; filename*=UTF-8''${encodeURIComponent(item.filename).replace(/'/g, '%27')}` });
         await pipeline(createReadStream(file), res); return;
+      }
+      if (path.startsWith('/api/messages/') && req.method === 'PATCH') {
+        takeRate(`pin:${s.user_id}`, 120, 60000);
+        const item = getMessage(path.split('/').at(-1), s.user_id);
+        if (!item) fail(404, '消息不存在');
+        const b = await body(req);
+        if (typeof b.pinned !== 'boolean') fail(400, '请指定是否置顶');
+        db.prepare('UPDATE messages SET pinned=? WHERE id=? AND user_id=?').run(b.pinned ? 1 : 0, item.id, s.user_id);
+        const pinned = { id: item.id, pinned: b.pinned };
+        emit(s.user_id, 'changed', pinned);
+        return json(res, 200, pinned);
       }
       if (path.startsWith('/api/messages/') && req.method === 'DELETE') {
         const item = getMessage(path.split('/').at(-1), s.user_id);

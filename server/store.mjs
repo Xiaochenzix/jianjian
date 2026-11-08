@@ -39,6 +39,7 @@ export function openStore(dataDir) {
       user_id TEXT NOT NULL REFERENCES users(id), device_id TEXT NOT NULL REFERENCES devices(id),
       kind TEXT NOT NULL, text TEXT, filename TEXT, size INTEGER,
       created_at INTEGER NOT NULL, expires_at INTEGER, expired INTEGER NOT NULL DEFAULT 0,
+      pinned INTEGER NOT NULL DEFAULT 0,
       client_id TEXT NOT NULL, UNIQUE(user_id, device_id, client_id)
     );
     CREATE INDEX IF NOT EXISTS messages_user_seq ON messages(user_id, seq DESC);
@@ -47,6 +48,8 @@ export function openStore(dataDir) {
     INSERT OR IGNORE INTO settings VALUES ('retentionDays', '7');
     INSERT OR IGNORE INTO settings VALUES ('userQuotaMB', '5120');
   `);
+  const messageColumns = db.prepare('PRAGMA table_info(messages)').all();
+  if (!messageColumns.some(column => column.name === 'pinned')) db.exec('ALTER TABLE messages ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0');
   return db;
 }
 export function config(db) {

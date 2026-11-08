@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-  <meta name="theme-color" content="#ededed">
+  <meta name="theme-color" content="#09090b">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; object-src 'none'; base-uri 'none'">
   <title>剪剪 · 我的设备消息</title>
-  <link rel="icon" href="icon.svg"><link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="icon.svg"><script src="theme.js"></script><link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -23,25 +23,61 @@
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 4-5 8-8 9-3-1-8-5-8-9V6Z"/><path d="m8 12 3 3 5-6"/></symbol>
     <symbol id="i-logout" viewBox="0 0 24 24"><path d="M10 4H5v16h5m-1-8h12m-4-4 4 4-4 4"/></symbol>
     <symbol id="i-floating" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8h18"/><rect x="11" y="12" width="7" height="5" rx="1"/></symbol>
+    <symbol id="i-smartphone" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6M14 11v6M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></symbol>
   </svg>
   <section id="login-screen" class="login-screen">
-    <div class="login-story">
-      <div class="login-brand"><img src="icon.svg" alt=""><strong>剪剪</strong><span>自己的设备，随时接上。</span></div>
-      <h1>给另一台设备，<br>发条消息。</h1>
-      <p>文字、链接、文件，在手机和电脑间接着用。</p>
-      <div class="story-conversation" aria-hidden="true"><div class="story-device">电脑</div><div class="story-bubble">这份文件，带到手机上。</div><div class="story-bubble own">收到，出门也能接着看。</div><div class="story-device right">手机</div></div>
-      <div class="platform-pills"><span>Android</span><span>Windows</span><span>macOS</span><span>Linux</span></div>
-    </div>
-    <form id="login-form" class="login-card">
-      <div class="mobile-brand"><img src="icon.svg" alt="">剪剪</div>
-      <h2>登录剪剪</h2><p class="muted">连接你的设备消息</p>
-      <label for="server-input">服务器地址</label><input id="server-input" type="url" inputmode="url" placeholder="https://服务器地址:端口" required autocomplete="url" spellcheck="false">
-      <div class="login-pair"><div><label for="username-input">账号</label><input id="username-input" required autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="你的账号"></div><div><label for="password-input">密码</label><input id="password-input" type="password" required autocomplete="current-password" placeholder="输入密码"></div></div>
-      <label for="device-input">这台设备的名称</label><input id="device-input" required maxlength="64" placeholder="例如：我的手机">
+    <form id="login-form" class="login-card" novalidate data-mode="password">
+      <header class="login-head">
+        <div class="login-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="6" y="5.5" width="12" height="15" rx="2.2"/><rect x="9" y="3.2" width="6" height="4" rx="1.2"/><path d="M9 11.5h6M9 15h4"/></svg></div>
+        <h1>剪剪</h1>
+        <p>私有跨端同步中心</p>
+      </header>
+      <div class="login-node" id="server-node">
+        <button type="button" id="server-toggle" class="login-node-toggle" aria-expanded="false" aria-controls="server-panel">
+          <i class="login-dot" id="server-dot"></i>
+          <span>服务器地址 / 节点</span>
+          <strong id="server-summary">未设置</strong>
+          <svg class="login-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"/></svg>
+        </button>
+        <div id="server-panel" class="login-node-panel"><div>
+          <label for="server-input">节点地址</label>
+          <input id="server-input" type="url" inputmode="url" placeholder="https://地址:端口" autocomplete="url" spellcheck="false">
+        </div></div>
+      </div>
+      <div class="login-modes" role="tablist" aria-label="登录方式">
+        <button type="button" id="mode-password" role="tab" aria-selected="true">账号密码</button>
+        <button type="button" id="mode-key" role="tab" aria-selected="false">访问令牌</button>
+      </div>
+      <div id="password-fields">
+        <label for="username-input">账号</label>
+        <input id="username-input" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="账号">
+        <label for="password-input">密码</label>
+        <div class="login-secret">
+          <input id="password-input" type="password" autocomplete="current-password" placeholder="密码">
+          <button type="button" id="password-toggle" class="login-eye" aria-label="显示密码" aria-pressed="false"><svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5l16 14M9.5 9.7A3.2 3.2 0 0 0 12 15.2M6.1 6.8C3.8 8.4 2 12 2 12s3.5 6 10 6c1.7 0 3.2-.4 4.5-1.1M10.4 6.2C10.9 6.1 11.4 6 12 6c6.5 0 10 6 10 6a17 17 0 0 1-2.2 2.8"/></svg></button>
+        </div>
+      </div>
+      <div id="key-fields" class="hidden">
+        <label for="key-input">访问令牌 / 免密 Key</label>
+        <input id="key-input" autocomplete="off" spellcheck="false" placeholder="粘贴访问令牌">
+      </div>
+      <label for="device-input">设备名称</label>
+      <input id="device-input" maxlength="64" autocomplete="off" placeholder="在其他设备上显示的名字" enterkeyhint="go">
       <p id="login-error" class="error" role="alert"></p>
-      <button id="login-button" class="primary" type="submit">连接并登录</button>
-      <p class="login-foot"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>同一账号，只在自己的设备之间同步</p>
+      <button id="login-button" class="login-submit" type="submit"><span>登录</span><svg class="login-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      <p class="login-status"><i></i><span>私有连接 · 仅限授权设备访问</span></p>
     </form>
+    <div id="glass-login" class="glass-host hidden"></div>
+    <div id="beam-login" class="glass-host hidden"></div>
   </section>
   <div id="app" class="app hidden">
     <aside class="sidebar">
@@ -62,12 +98,14 @@
       <header class="topbar">
         <img class="mobile-chat-brand" src="icon.svg" alt="">
         <div class="chat-title"><h1>我的消息 <span id="chat-device-count"></span></h1><div id="connection" class="connection" role="status"><i></i><span>正在连接</span></div></div>
+        <button type="button" id="clipboard-sync" class="sync-pill" role="switch" aria-checked="false" aria-label="自动同步剪贴板" title="自动同步剪贴板"><span class="sync-pill-mark" aria-hidden="true">📋</span><span class="sync-pill-label">自动同步剪贴板</span><span class="sync-pill-knob" aria-hidden="true"></span></button>
+        <button type="button" id="theme-toggle" class="icon-button" aria-pressed="false" aria-label="切换到暗黑模式" title="切换到暗黑模式"><svg class="icon theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-moon"/></svg><svg class="icon theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sun"/></svg></button>
         <button id="floating-window-button" class="icon-button hidden" title="打开悬浮窗" aria-label="打开悬浮窗"><svg class="icon" aria-hidden="true"><use href="#i-floating"/></svg></button>
         <button id="search-toggle" class="icon-button" aria-label="搜索消息" aria-expanded="false" aria-controls="search-panel"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg></button>
         <button id="mobile-settings" class="icon-button" aria-label="打开同步设置"><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg></button>
       </header>
       <section id="search-panel" class="search-panel hidden"><label class="search" for="search"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg><input id="search" type="search" placeholder="搜索文字或文件名" aria-label="搜索文字或文件名" autocomplete="off"></label></section>
-      <section class="toolbar" aria-label="消息筛选"><div class="tabs" role="tablist" aria-label="内容类型"><button role="tab" aria-selected="true" data-filter="" class="active">全部</button><button role="tab" aria-selected="false" data-filter="clipboard">剪贴板</button><button role="tab" aria-selected="false" data-filter="text">消息</button><button role="tab" aria-selected="false" data-filter="file">文件</button></div><div id="sync-summary" class="sync-summary"></div></section>
+      <section class="toolbar" aria-label="消息筛选"><div class="tabs" role="tablist" aria-label="内容类型"><button role="tab" aria-selected="true" data-filter="" class="active">全部</button><button role="tab" aria-selected="false" data-filter="clipboard">剪贴板</button><button role="tab" aria-selected="false" data-filter="text">消息</button><button role="tab" aria-selected="false" data-filter="file">文件</button><button role="tab" aria-selected="false" data-filter="pinned">📌 置顶</button></div><div id="sync-summary" class="sync-summary"></div></section>
       <div class="conversation-area">
         <div id="conversation-scroll" class="conversation-scroll" tabindex="0" role="region" aria-label="消息记录">
           <button id="load-more" class="load-more hidden">加载更早的消息</button>
@@ -95,17 +133,22 @@
     <div class="dialog-header"><button class="icon-button close-dialog" aria-label="返回消息"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></button><h2 id="settings-title">同步设置</h2><span class="dialog-header-note">仅此设备</span></div>
     <div class="dialog-body">
       <div id="account-summary" class="account-summary"><div class="settings-avatar"><svg class="icon" aria-hidden="true"><use href="#i-devices"/></svg></div><div><strong id="mobile-account-name"></strong><small id="dialog-device-name"></small></div></div>
+      <div class="settings-group style-group"><p class="rename-label">登录风格</p><div class="style-switch" role="radiogroup" aria-label="登录风格"><button type="button" id="style-night" aria-pressed="true">夜色</button><button type="button" id="style-glass" aria-pressed="false">私有云</button><button type="button" id="style-beam" aria-pressed="false">光束</button></div><p class="style-note">夜色、私有云、光束三套登录。光束带同步动画。选择留在这台设备上，退出后即可看到。</p></div>
       <div class="settings-group"><label class="switch-row"><span><strong>自动发送剪贴板</strong><small>本机复制文字或链接后，发送给其他设备</small></span><input id="auto-send" type="checkbox" role="switch"></label><label class="switch-row"><span><strong>自动写入本机剪贴板</strong><small>收到其他设备的新文字后，可以直接粘贴</small></span><input id="auto-write" type="checkbox" role="switch"></label><label id="startup-row" class="switch-row"><span><strong>开机启动</strong><small>登录电脑后在托盘运行</small></span><input id="auto-start" type="checkbox" role="switch"></label><label id="background-row" class="switch-row hidden"><span><strong>后台保持连接</strong><small>显示常驻通知，持续接收新消息</small></span><input id="background" type="checkbox" role="switch"></label></div>
       <div id="capability" class="capability"></div>
       <div class="settings-group rename-group"><label class="rename-label" for="rename-device">设备名称</label><div class="rename-controls"><input id="rename-device" maxlength="64"><button id="save-device" class="secondary">保存</button></div></div>
-      <p class="muted small">自动同步默认关闭，仅支持文字和链接。随时可以点击消息下的“复制”。</p>
+      <p class="muted small">自动同步默认关闭，仅支持文字和链接。悬停消息可复制、生成二维码、置顶或删除，单击内容也会复制。</p>
       <div class="settings-actions"><button id="mobile-admin" class="secondary hidden"><svg class="icon" aria-hidden="true"><use href="#i-shield"/></svg>管理空间</button><button id="mobile-logout" class="danger-button">退出登录</button></div>
     </div>
   </dialog>
   <dialog id="devices-dialog" aria-labelledby="devices-title"><div class="dialog-header"><button class="icon-button close-dialog" aria-label="返回消息"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></button><h2 id="devices-title">我的设备</h2></div><div class="dialog-body"><p class="section-caption">同一账号登录，就能在设备间同步</p><div id="devices-list" class="settings-group"></div></div></dialog>
   <dialog id="admin-dialog" aria-labelledby="admin-title"><div class="dialog-header"><button class="icon-button close-dialog" aria-label="返回消息"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></button><h2 id="admin-title">管理空间</h2></div><div class="dialog-body"><h3>账号管理</h3><form id="create-user-form" class="stack settings-group"><label>新账号<input id="new-username" required pattern="[a-zA-Z0-9_.@-]{3,64}" placeholder="3–64 位字母、数字或 _.@-"></label><label>初始密码<input id="new-password" type="password" minlength="12" maxlength="256" required autocomplete="new-password" placeholder="至少 12 位"></label><button class="primary">创建账号</button></form><div id="users-list"></div><hr><h3>文件策略</h3><form id="config-form" class="stack settings-group"><label>单个文件上限（MB）<input id="config-max" type="number" min="1" max="10240" required></label><label>文件保留天数（仅影响新文件）<input id="config-days" type="number" min="1" max="365" required></label><label>每位用户文件总额度（MB）<input id="config-quota" type="number" min="1" max="1048576" required></label><button class="primary">保存文件策略</button></form></div></dialog>
   <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-text"><div class="dialog-header"><h2 id="confirm-title">确认操作</h2></div><p id="confirm-text"></p><div class="confirm-actions"><button id="confirm-cancel" class="secondary">取消</button><button id="confirm-ok" class="danger-button">确认删除</button></div></dialog>
+  <dialog id="qr-dialog" aria-labelledby="qr-title"><div class="dialog-header"><button class="icon-button close-dialog" type="button" aria-label="关闭二维码"><svg class="icon" aria-hidden="true"><use href="#i-back"/></svg></button><h2 id="qr-title">扫码取用</h2></div><div class="dialog-body qr-body"><div class="qr-sheet"><canvas id="qr-canvas" width="240" height="240"></canvas></div><p id="qr-caption" class="muted small"></p></div></dialog>
   <div id="toast" class="toast hidden" role="status"></div><div id="drop-overlay" class="drop-overlay hidden">松开，把文件发给自己的设备</div>
+  <script src="qr.js" defer></script>
+  <script src="glass-login.js" defer></script>
+  <script src="beam-login.js" defer></script>
   <script src="app.js" defer></script>
 </body>
 </html>

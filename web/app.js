@@ -26,8 +26,139 @@ let appReady = false, pendingFocusMessage = null;
 const activeLoads = new Set();
 const deviceKey = localStorage.getItem('jianjian-device-key') || crypto.randomUUID();
 localStorage.setItem('jianjian-device-key', deviceKey);
-const platformIcon = p => ({ Android: '▯', Windows: '▣', macOS: '▱', Linux: '▣', Web: '◎' }[p] || '▣');
 const platformName = p => ({ Android: '安卓', Windows: 'Win', macOS: 'Mac', Linux: 'Linux', Web: 'Web' }[p] || '设备');
+function platformGlyph(platform) {
+  if (platform === 'Android' || platform === 'iOS') return 'i-smartphone';
+  if (platform === 'Web') return 'i-globe';
+  return 'i-monitor';
+}
+function svgIcon(id) {
+  const holder = document.createElement('span');
+  holder.innerHTML = `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#${id}"/></svg>`;
+  return holder.firstElementChild || holder;
+}
+function isCommand(value) {
+  return /^\$\s+\S/.test(value)
+    || /^(?:sudo\s+)?(?:npm|pnpm|yarn|npx|bun|git|curl|wget|ssh|scp|pip3?|python3?|node|deno|docker|podman|kubectl|brew|apt(?:-get)?|pacman|cargo|go|adb|winget|choco|scoop|gradle|mvn|flutter|dart|php|composer|bundle|make|cmake|corepack|ping|tar|unzip|chmod|chown)\b/.test(value)
+    || /^(?:cd|ls|cat|echo|export|mkdir|rm|cp|mv)\s+\S/.test(value);
+}
+function isPackage(value) {
+  if (value.length > 180 || /\s/.test(value)) return false;
+  if (/^@[a-z0-9][\w.-]*\/[a-z0-9][\w.-]*$/i.test(value)) return true;
+  if (!/^[a-z0-9][\w-]*(\.[a-z0-9][\w-]*)+$/i.test(value)) return false;
+  const parts = value.split('.');
+  return parts.length >= 2 && parts.every(part => part.length > 0) && !parts.every(part => /^\d+$/.test(part));
+}
+function messageView(text) {
+  const value = String(text ?? '');
+  const trimmed = value.trim();
+  if (/^https?:\/\/\S+$/i.test(trimmed)) {
+    let host = trimmed;
+    try { host = new URL(trimmed).hostname.replace(/^www\./, ''); } catch { /* Keep the raw address when it is not a valid URL. */ }
+    return { type: 'link', url: trimmed, host };
+  }
+  if (trimmed && !trimmed.includes('\n') && trimmed.length <= 240 && !/[\u3400-\u9fff]/.test(trimmed) && (isCommand(trimmed) || isPackage(trimmed))) return { type: 'code', text: trimmed };
+  return { type: 'text', text: value };
+}
+function copyPayload(item) {
+  if (item.kind === 'file') return item.filename || '';
+  const view = messageView(item.text || '');
+  if (view.type === 'link') return view.url;
+  if (view.type === 'code') return view.text;
+  return item.text || '';
+}
+async function copyText(text) {
+  const value = String(text ?? '');
+  if (!value) { toast('没有可以复制的内容'); return; }
+  try {
+    if (bridge) await bridge.invoke('copy', value);
+    else if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
+    else throw new Error('当前环境不能写入剪贴板');
+    toast('已复制');
+  } catch (e) { toast(`复制失败：${e.message}`); }
+}
+function actionButton(label, icon, className = '') {
+  const button = element('button', `bubble-action ${className}`.trim());
+  button.type = 'button'; button.title = label; button.setAttribute('aria-label', label); button.append(svgIcon(icon));
+  return button;
+}
+function linkCard(view) {
+  const card = element('div', 'link-card');
+  card.append(element('span', 'link-host', view.host));
+  const path = element('span', 'link-path', view.url.replace(/^https?:\/\//i, '')); path.title = view.url; card.append(path);
+  const open = element('a', 'link-open');
+  open.href = view.url; open.target = '_blank'; open.rel = 'noopener noreferrer'; open.title = '打开链接'; open.setAttribute('aria-label', `打开 ${view.host}`);
+  open.append(svgIcon('i-external')); card.append(open);
+  return card;
+}
+function showQr(text) {
+  const value = String(text || '').trim();
+  if (!value) { toast('没有可以生成二维码的内容'); return; }
+  const source = value.length > 800 ? value.slice(0, 800) : value;
+  const canvas = $('qr-canvas');
+  if (typeof window.jianjianQr !== 'function' || !canvas?.getContext || !$('qr-dialog')) { toast('二维码还没准备好，请刷新后再试'); return; }
+  let matrix;
+  try { matrix = window.jianjianQr(source); } catch { toast('这段内容放不进二维码'); return; }
+  const size = matrix.size; const rows = matrix.data; const scale = Math.max(3, Math.min(8, Math.floor(280 / size)));
+  canvas.width = size * scale; canvas.height = size * scale;
+  const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#09090b';
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (rows[y][x]) ctx.fillRect(x * scale, y * scale, scale, scale);
+  const preview = source.length > 72 ? `${source.slice(0, 72)}…` : source;
+  $('qr-caption').textContent = source === value ? preview : `${preview}（仅前 800 字）`;
+  $('qr-dialog').showModal();
+}
+async function togglePin(item) {
+  const pinned = !item.pinned;
+  try {
+    const next = await api(`/messages/${item.id}`, { method: 'PATCH', body: JSON.stringify({ pinned }) });
+    applyLiveEvent({ type: 'changed', data: { id: item.id, pinned: !!next.pinned } });
+    toast(pinned ? '已置顶' : '已取消置顶');
+  } catch (e) { toast(e.message); }
+}
+function bubbleActions(item, payload) {
+  const bar = element('div', 'bubble-actions');
+  const copy = actionButton('复制', 'i-copy');
+  copy.onclick = event => { event.stopPropagation(); copyText(payload); };
+  const qr = actionButton('生成二维码', 'i-qr');
+  qr.onclick = event => { event.stopPropagation(); showQr(payload); };
+  const pin = actionButton(item.pinned ? '取消置顶' : '置顶', 'i-pin', item.pinned ? 'is-active' : '');
+  pin.setAttribute('aria-pressed', item.pinned ? 'true' : 'false');
+  pin.onclick = event => { event.stopPropagation(); togglePin(item); };
+  const del = actionButton('删除', 'i-trash', 'delete-button');
+  del.onclick = async event => {
+    event.stopPropagation();
+    if (!await confirmAction('删除这条记录？', '将从所有设备的时间线删除这条记录；文件也会从服务器删除。已下载到本机的文件不会被删除。')) return;
+    try { await api(`/messages/${item.id}`, { method: 'DELETE' }); applyLiveEvent({ type: 'deleted', data: { id: item.id } }); } catch (e) { toast(e.message); }
+  };
+  bar.append(copy, qr, pin, del);
+  return bar;
+}
+function syncThemeButton() {
+  const dark = document.documentElement.dataset?.theme === 'dark';
+  const button = $('theme-toggle'); if (!button) return;
+  const label = dark ? '切换到浅色模式' : '切换到暗黑模式';
+  button.setAttribute('aria-pressed', dark ? 'true' : 'false'); button.setAttribute('aria-label', label); button.title = label;
+}
+function applyTheme(theme) {
+  const next = theme === 'dark' ? 'dark' : 'light';
+  const root = document.documentElement;
+  if (root?.dataset) root.dataset.theme = next;
+  try { localStorage.setItem('jianjian-theme', next); } catch { /* Keep the choice for this page view. */ }
+  syncThemeButton();
+  if (!$('app')?.classList.contains('hidden')) setThemeColor(next === 'dark' ? '#09090b' : '#ededed');
+}
+function clipboardSyncOn() {
+  if (!state.info.clipboard) return false;
+  const canSend = state.info.autoSendSupported !== false;
+  return (!canSend || state.prefs.autoSend) && !!state.prefs.autoWrite;
+}
+function renderClipboardSync() {
+  const pill = $('clipboard-sync'); if (!pill) return;
+  const available = !!state.info.clipboard; const on = clipboardSyncOn();
+  pill.setAttribute('aria-checked', on ? 'true' : 'false'); pill.setAttribute('aria-disabled', available ? 'false' : 'true');
+  pill.classList.toggle('is-on', on); pill.classList.toggle('is-unavailable', !available);
+  pill.title = available ? '自动同步剪贴板' : (state.info.capability || '网页版仅支持手动复制和发送。自动剪贴板同步请使用剪剪客户端。');
+}
 function toast(message) {
   const target = $('toast');
   clearTimeout(toastTimer); target.textContent = message;
@@ -108,7 +239,8 @@ function updateViewport() {
   });
 }
 function matchesFilters(item) {
-  return (!state.filter || item.kind === state.filter) && (!state.q || String(item.text ?? item.filename ?? '').toLocaleLowerCase().includes(state.q.toLocaleLowerCase()));
+  const kindOk = !state.filter || (state.filter === 'pinned' ? !!Number(item.pinned) : item.kind === state.filter);
+  return kindOk && (!state.q || String(item.text ?? item.filename ?? '').toLocaleLowerCase().includes(state.q.toLocaleLowerCase()));
 }
 function mergeItems(items, changes = []) {
   const result = new Map(items.map(item => [item.id, item]));
@@ -118,8 +250,10 @@ function mergeItems(items, changes = []) {
       if (matchesFilters(event.data)) result.set(event.data.id, event.data);
       else result.delete(event.data.id);
     } else if (event.type === 'changed' && event.data.id && result.has(event.data.id)) {
-      const item = result.get(event.data.id);
-      if (item.kind === 'file' && item.expires_at <= Date.now()) result.set(item.id, { ...item, expired: true });
+      let item = result.get(event.data.id);
+      if (typeof event.data.pinned === 'boolean' || typeof event.data.pinned === 'number') item = { ...item, pinned: event.data.pinned ? 1 : 0 };
+      else if (item.kind === 'file' && item.expires_at <= Date.now()) item = { ...item, expired: true };
+      if (matchesFilters(item)) result.set(item.id, item); else result.delete(item.id);
     }
   }
   return [...result.values()].sort((a, b) => b.seq - a.seq);
@@ -165,9 +299,10 @@ function updateConfig() {
   $('max-file').textContent = state.session.config.maxFileMB;
   $('retention-days').textContent = state.session.config.retentionDays;
 }
+function setThemeColor(color) { const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', color); }
 async function enter() {
   destroyed = false; appReady = false;
-  $('login-screen').classList.add('hidden'); $('app').classList.remove('hidden');
+  $('login-screen').classList.add('hidden'); $('app').classList.remove('hidden'); setThemeColor(document.documentElement.dataset?.theme === 'dark' ? '#09090b' : '#ededed'); syncThemeButton();
   $('account-name').textContent = state.session.username;
   $('avatar').textContent = state.session.username[0].toUpperCase();
   $('admin-button').classList.toggle('hidden', state.session.role !== 'admin');
@@ -189,9 +324,36 @@ async function enter() {
     try { await focusMessage(id); } catch (e) { if (state.session) toast(e.message); }
   }
 }
-async function login(event) {
-  event.preventDefault(); $('login-error').textContent = ''; $('login-button').disabled = true;
+function signalLogin(phase, message = '') { document.dispatchEvent?.(new CustomEvent('jianjian-login', { detail: { phase, message } })); }
+function loginStyle() {
   try {
+    const requested = new URLSearchParams(location.search).get('style');
+    if (requested === 'glass' || requested === 'night' || requested === 'beam') return requested;
+    const saved = localStorage.getItem('jianjian-login-style');
+    return saved === 'glass' || saved === 'beam' ? saved : 'night';
+  } catch { return 'night'; }
+}
+function applyLoginStyle(style = loginStyle()) {
+  const next = style === 'glass' || style === 'beam' ? style : 'night';
+  try { localStorage.setItem('jianjian-login-style', next); } catch {}
+  $('login-screen')?.classList.toggle('is-glass', next === 'glass');
+  $('login-screen')?.classList.toggle('is-beam', next === 'beam');
+  $('login-form')?.classList.toggle('hidden', next !== 'night');
+  $('glass-login')?.classList.toggle('hidden', next !== 'glass');
+  $('beam-login')?.classList.toggle('hidden', next !== 'beam');
+  for (const [id, name] of [['style-night', 'night'], ['style-glass', 'glass'], ['style-beam', 'beam']]) $(id)?.setAttribute('aria-pressed', next === name ? 'true' : 'false');
+  if ($('app')?.classList.contains('hidden')) setThemeColor(next === 'glass' ? '#1a3c4d' : '#09090b');
+  if (next === 'glass') window.__mountGlassLogin?.();
+  if (next === 'beam') window.__mountBeamLogin?.();
+}
+async function login(event) {
+  event.preventDefault(); $('login-error').textContent = ''; $('login-button').disabled = true; signalLogin('start');
+  const night = !$('login-form').classList.contains('hidden');
+  try {
+    if ($('login-form').dataset.mode === 'key') throw new Error('当前版本使用账号和密码登录，还没有免密 Key');
+    if (!$('server-input').value.trim()) { if (night) { setServerOpen(true); $('server-input').focus(); } throw new Error('请填写服务器地址'); }
+    if (!$('username-input').value.trim() || !$('password-input').value) { if (night) ($('username-input').value.trim() ? $('password-input') : $('username-input')).focus(); throw new Error('请输入账号和密码'); }
+    if (!$('device-input').value.trim()) { if (night) $('device-input').focus(); throw new Error('请填写设备名称'); }
     const server = validServer($('server-input').value);
     const response = await fetch(`${server}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: $('username-input').value.trim(), password: $('password-input').value, deviceName: $('device-input').value.trim(), deviceKey, platform: state.info.platform }) });
     const result = await response.json();
@@ -205,8 +367,8 @@ async function login(event) {
       sessionStorage.setItem('jianjian-session', JSON.stringify(state.session));
       state.prefs = { ...defaults, ...JSON.parse(localStorage.getItem(`prefs:${server}:${result.username}`) || '{}') };
     }
-    await enter();
-  } catch (e) { $('login-error').textContent = e.message === 'Failed to fetch' ? '无法连接服务器，请检查地址、网络和 HTTPS 证书' : e.message; }
+    signalLogin('ok'); await enter();
+  } catch (e) { const message = e.message === 'Failed to fetch' ? '无法连接服务器，请检查地址、网络和 HTTPS 证书' : e.message; $('login-error').textContent = message; signalLogin('error', message); }
   finally { $('login-button').disabled = false; }
 }
 async function logout(revoke = true) {
@@ -221,7 +383,7 @@ async function logout(revoke = true) {
   sessionStorage.removeItem('jianjian-session'); state.session = null; state.items = []; state.nextBefore = null;
   state.filter = ''; state.q = ''; $('search').value = ''; updateTabs();
   document.querySelectorAll('dialog[open]').forEach(d => d.close());
-  $('app').classList.add('hidden'); $('login-screen').classList.remove('hidden'); $('timeline').replaceChildren();
+  $('app').classList.add('hidden'); $('login-screen').classList.remove('hidden'); applyLoginStyle(); $('timeline').replaceChildren();
   setToolsOpen(false); setSearchOpen(false); updateViewport();
 }
 async function refresh(more = false, options = {}) {
@@ -273,14 +435,16 @@ function renderTimeline(options = {}) {
     if (day !== previousDay) { list.append(element('div', 'date-divider', day)); previousDay = day; }
     const own = item.device_id === state.session.deviceId;
     const card = element('article', `message-card${own ? ' own' : ''}`); card.dataset.messageId = item.id;
-    card.append(element('div', 'message-avatar', platformName(item.platform)));
+    const avatar = element('div', 'message-avatar'); avatar.title = platformName(item.platform); avatar.setAttribute('aria-label', platformName(item.platform)); avatar.append(svgIcon(platformGlyph(item.platform))); card.append(avatar);
     const content = element('div', 'message-content');
     const meta = element('div', 'message-meta');
     meta.append(element('span', 'device-name', item.device_name), element('span', `kind-label ${item.kind}`, { text: '消息', clipboard: '剪贴板', file: '文件' }[item.kind]));
+    if (item.pinned) meta.append(element('span', 'pin-mark', '置顶'));
     if (own) meta.append(element('span', 'local-label', '本机'));
     const time = element('time', '', date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })); time.dateTime = date.toISOString(); meta.append(time); content.append(meta);
     const bubble = element('div', `message-bubble${item.kind === 'file' ? ' file-bubble' : ''}`);
-    const footer = element('div', 'card-footer');
+    const copied = copyPayload(item);
+    bubble.append(bubbleActions(item, copied));
     if (item.kind === 'file') {
       const expired = item.expired || item.expires_at <= Date.now();
       const draggable = canDragFiles() && !expired;
@@ -302,19 +466,16 @@ function renderTimeline(options = {}) {
           try { bridge.dragFile(payload); } catch (error) { toast(error.message); }
         });
       }
-      const download = element('button', '', expired ? '已过期' : '↓ 下载文件'); download.disabled = !!expired;
-      download.onclick = () => downloadFile(item, download); footer.append(download);
+      const download = element('button', 'file-download', expired ? '已过期' : '下载'); download.type = 'button'; download.disabled = !!expired;
+      download.onclick = event => { event?.stopPropagation?.(); downloadFile(item, download); }; bubble.append(download);
     } else {
-      bubble.append(element('p', 'message-text', item.text));
-      const copy = element('button', '', '▢ 复制'); copy.onclick = async () => {
-        try { if (bridge) await bridge.invoke('copy', item.text); else await navigator.clipboard.writeText(item.text); toast('已复制'); } catch (e) { toast(`复制失败：${e.message}`); }
-      }; footer.append(copy);
+      const view = messageView(item.text || '');
+      if (view.type === 'link') { bubble.classList.add('is-link'); bubble.append(linkCard(view)); }
+      else if (view.type === 'code') { bubble.classList.add('is-code'); const pre = element('pre', 'message-code'); pre.append(element('code', '', view.text)); bubble.append(pre); }
+      else bubble.append(element('p', 'message-text', item.text));
     }
-    const del = element('button', 'delete-button', '删除');
-    del.onclick = async () => {
-      if (!await confirmAction('删除这条记录？', '将从所有设备的时间线删除这条记录；文件也会从服务器删除。已下载到本机的文件不会被删除。')) return;
-      try { await api(`/messages/${item.id}`, { method: 'DELETE' }); applyLiveEvent({ type: 'deleted', data: { id: item.id } }); } catch (e) { toast(e.message); }
-    }; footer.append(del); content.append(bubble, footer); card.append(content); list.append(card);
+    bubble.onclick = event => { if (event.target?.closest?.('button, a')) return; if (window.getSelection?.()?.toString?.()) return; copyText(copied); };
+    content.append(bubble); card.append(content); list.append(card);
   }
   $('empty').classList.toggle('hidden', state.items.length !== 0);
   const filtered = !!(state.filter || state.q);
@@ -508,7 +669,7 @@ async function loadDevices() {
   for (const device of state.devices) {
     const online = Date.now() - device.last_seen < 65000;
     for (const [target, css] of [[$('sidebar-devices'), 'device-mini'], [$('devices-list'), 'device-row']]) {
-      const row = element('div', css); row.append(element('span', 'device-symbol', platformIcon(device.platform)));
+      const row = element('div', css); const symbol = element('span', 'device-symbol'); symbol.title = device.platform; symbol.append(svgIcon(platformGlyph(device.platform))); row.append(symbol);
       const desc = element('div'); desc.append(element('strong', '', device.name));
       desc.append(element('small', '', `${device.platform} · ${device.id === state.session.deviceId ? '本机' : online ? '最近在线' : new Date(device.last_seen).toLocaleDateString('zh-CN') + ' 活跃'}`)); row.append(desc, element('span', `online-dot ${online ? 'live' : ''}`)); target.append(row);
     }
@@ -524,6 +685,7 @@ function renderSettings() {
   $('background-row').classList.toggle('hidden', state.info.platform !== 'Android');
   $('capability').textContent = state.info.capability || '网页版仅支持手动复制和发送。自动剪贴板同步请使用剪剪客户端。';
   $('sync-summary').replaceChildren(element('span', '', `自动发送 ${state.prefs.autoSend ? '已开启' : '已关闭'}`), element('span', '', `自动写入 ${state.prefs.autoWrite ? '已开启' : '已关闭'}`), element('span', '', state.info.platform === 'Android' ? '后台读取剪贴板受系统限制' : '设置仅对本机生效'));
+  renderClipboardSync();
 }
 async function handleEvent(event) {
   if (event.type === 'download') { if (state.session && !destroyed) updateDownload(event.data); return; }
@@ -681,6 +843,32 @@ async function showAdmin() {
     $('config-max').value = state.session.config.maxFileMB; $('config-days').value = state.session.config.retentionDays; $('config-quota').value = state.session.config.userQuotaMB;
   } catch (e) { toast(e.message); }
 }
+function setServerOpen(open) { $('server-node').classList.toggle('is-open', open); $('server-toggle').setAttribute('aria-expanded', open ? 'true' : 'false'); }
+function syncServerSummary() {
+  const value = $('server-input').value.trim(); let text = '未设置';
+  if (value) { try { text = new URL(value).host; } catch { text = value; } }
+  $('server-summary').textContent = text; $('server-dot').classList.toggle('is-live', Boolean(value));
+}
+function setLoginMode(mode) {
+  const key = mode === 'key'; $('login-form').dataset.mode = key ? 'key' : 'password';
+  $('mode-password').setAttribute('aria-selected', key ? 'false' : 'true'); $('mode-key').setAttribute('aria-selected', key ? 'true' : 'false');
+  $('password-fields').classList.toggle('hidden', key); $('key-fields').classList.toggle('hidden', !key);
+  $('login-error').textContent = '';
+}
+$('server-toggle').onclick = () => setServerOpen(!$('server-node').classList.contains('is-open'));
+$('server-input').addEventListener('input', syncServerSummary);
+$('mode-password').onclick = () => setLoginMode('password'); $('mode-key').onclick = () => setLoginMode('key');
+$('style-night').onclick = () => applyLoginStyle('night'); $('style-glass').onclick = () => applyLoginStyle('glass'); $('style-beam').onclick = () => applyLoginStyle('beam');
+syncThemeButton();
+if ($('theme-toggle')) $('theme-toggle').onclick = () => applyTheme(document.documentElement.dataset?.theme === 'dark' ? 'light' : 'dark');
+if ($('clipboard-sync')) $('clipboard-sync').onclick = () => {
+  if (!state.info.clipboard) { toast(state.info.capability || '网页版仅支持手动复制和发送。自动剪贴板同步请使用剪剪客户端。'); return; }
+  const next = !clipboardSyncOn();
+  const patch = { autoWrite: next };
+  if (state.info.autoSendSupported !== false) patch.autoSend = next;
+  savePrefs(patch);
+};
+$('password-toggle').onclick = () => { const show = $('password-input').type === 'password'; $('password-input').type = show ? 'text' : 'password'; $('password-toggle').setAttribute('aria-pressed', show ? 'true' : 'false'); $('password-toggle').setAttribute('aria-label', show ? '隐藏密码' : '显示密码'); };
 $('login-form').onsubmit = login; $('compose').onsubmit = compose;
 $('message-input').onkeydown = event => { if (!event.isComposing && event.keyCode !== 229 && event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); if (!sending) $('compose').requestSubmit(); } };
 $('message-input').oninput = resizeMessageInput;
@@ -737,6 +925,11 @@ async function boot() {
     } else state.session = JSON.parse(sessionStorage.getItem('jianjian-session') || 'null');
     $('server-input').value = localStorage.getItem('jianjian-server') || (location.protocol.startsWith('http') && !location.hostname.includes('androidplatform') ? location.origin : '');
     $('device-input').value = localStorage.getItem('jianjian-name') || state.info.name;
+    syncServerSummary(); setServerOpen(!$('server-input').value.trim()); applyLoginStyle();
+    if (!state.session && loginStyle() === 'night') {
+      if (!$('server-input').value.trim()) $('server-input').focus();
+      else { const next = ['username-input', 'password-input', 'device-input'].find(id => !$(id).value.trim()); $(next || 'password-input').focus(); }
+    }
     updateViewport();
     if (state.session) {
       try { const me = await api('/me'); if (state.session) { Object.assign(state.session, me); await enter(); } }

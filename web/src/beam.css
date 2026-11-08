@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@source "./beam-login.jsx";
+
+.beam-root { height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; }
+
+@media (prefers-reduced-motion: reduce) {
+  .beam-root * { scroll-behavior: auto !important; }
+}
