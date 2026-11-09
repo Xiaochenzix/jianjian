@@ -53,7 +53,7 @@ async function host(t, fetchImpl = async () => ({ ok: true, status: 200, json: a
     constructor(config) { super({ ...config, fetchImpl }); this.starts = 0; engine = this; }
     start(session) { this.starts++; return super.start(session); }
   }
-  const electron = { app, screen, BrowserWindow: FakeWindow, ipcMain: { handle(name, fn) { handler = fn; } }, clipboard: { readText: () => '', writeText() {} },
+  const electron = { app, screen, BrowserWindow: FakeWindow, ipcMain: Object.assign(new EventEmitter(), { handle(name, fn) { handler = fn; } }), clipboard: { readText: () => '', writeText() {} },
     Tray: class extends EventEmitter { setToolTip() {} setContextMenu(items) { menu = items; } },
     Menu: { buildFromTemplate: x => x }, nativeImage: { createFromPath: () => ({ resize: () => ({}) }) },
     safeStorage: { isEncryptionAvailable: () => !!options.persistedUser, encryptString: value => Buffer.from(value), decryptString: value => value.toString('utf8') }, dialog: { showSaveDialog: options.showSaveDialog }, session: { defaultSession: { setPermissionRequestHandler() {} } } };
